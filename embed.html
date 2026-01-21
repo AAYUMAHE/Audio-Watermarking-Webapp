@@ -1,57 +1,192 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Watermarking UI</title>
-    <link rel="stylesheet" href="embedstyle.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Inknut+Antiqua:wght@400&family=Poppins:wght@400&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audio Watermark Encoder</title>
+
+<style>
+  body {
+    margin: 0;
+    font-family: Inter, Arial, sans-serif;
+    background: linear-gradient(135deg, #0f172a, #020617);
+    color: #e5e7eb;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .card {
+    width: 420px;
+    background: #020617;
+    border-radius: 14px;
+    padding: 30px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  }
+
+  h1 {
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 22px;
+  }
+
+  .upload-box {
+    border: 2px dashed #334155;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    margin-bottom: 15px;
+    transition: all 0.2s ease;
+  }
+
+  .upload-box:hover {
+    border-color: #2563eb;
+    background: rgba(37, 99, 235, 0.05);
+  }
+
+  .upload-box span {
+    display: block;
+    font-size: 14px;
+    color: #94a3b8;
+    margin-top: 5px;
+  }
+
+  .file-name {
+    font-size: 13px;
+    color: #22c55e;
+    margin-top: 8px;
+  }
+
+  button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+    margin-top: 15px;
+  }
+
+  button:hover {
+    background: #1d4ed8;
+  }
+
+  .status {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 14px;
+    color: #93c5fd;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 18px;
+    font-size: 12px;
+    color: #64748b;
+  }
+</style>
 </head>
+
 <body>
-    <div id="AW">
-        <div id="Rectangle_10"></div>
-        <div id="Project_Bg_1"></div>
-        <div id="Rectangle_1"></div>
-        <div id="Project_Logo-1"></div>
-        
-        <div id="Audio_Watermark" class="text">
-            <a href="index.html">Audio Watermark</a>
-        </div>
-        
-        <div id="Embed_Watermark_Nav" class="text">
-            <a href="embed.html">Embed Watermark</a>
-        </div>
-        
-        <div id="Extract_Watermark_Nav" class="text">
-            <a href="extract.html">Extract Watermark</a>
-        </div>
-        
-        <div id="About" class="text">
-            <a href="about.html">About</a>
-        </div>
-        
-        <div id="Embed_Watermark_Title" class="text">Embed Watermark</div>
-        <div id="Rectangle_3"></div>
-        <div id="Rectangle_4"></div>
-        <div id="Rectangle_5"></div>
-        <div id="Upload_Oroginal_File" class="text">Upload Original File</div>
-        <div id="Upload_Original_Sub" class="text">Upload main audio file you want to Watermark (WAV)</div>
-        <div id="Ellipse_1"></div>
-        <div id="Project_Arrow_1"></div>
-        <div id="Rectangle_11"></div>
-        <div id="Rectangle_12"></div>
-        <div id="Rectangle_13"></div>
-        <div id="Upload_Watermark_File" class="text">Upload Watermark File</div>
-        <div id="Upload_Watermark_Sub" class="text">Upload short audio file you want to Watermark (WAV)</div>
-        <div id="Ellipse_2"></div>
-        <div id="Project_Arrow_2"></div>
-        <a href="downemb.html" class="go-next-link">
-            <div id="Go_Next"></div>
-        </a>
-    </div>
+
+<div class="card">
+  <h1>🎧 Audio Watermark Encoder</h1>
+
+  <div class="upload-box" id="origBox">
+    Upload Original Audio
+    <span>(Main WAV file)</span>
+    <div class="file-name" id="origName"></div>
+  </div>
+
+  <div class="upload-box" id="wmBox">
+    Upload Watermark Audio
+    <span>(Short WAV file)</span>
+    <div class="file-name" id="wmName"></div>
+  </div>
+
+  <button id="encodeBtn">Encode & Download</button>
+
+  <div class="status" id="status"></div>
+
+  <footer>
+    FFT-based Audio Watermarking
+  </footer>
+</div>
+
+<!-- Hidden inputs -->
+<input type="file" id="origInput" accept="audio/*" hidden>
+<input type="file" id="wmInput" accept="audio/*" hidden>
+
+<script>
+const API = "http://127.0.0.1:8000";
+
+let originalFile = null;
+let watermarkFile = null;
+
+// UI bindings
+const origBox = document.getElementById("origBox");
+const wmBox = document.getElementById("wmBox");
+const origInput = document.getElementById("origInput");
+const wmInput = document.getElementById("wmInput");
+const origName = document.getElementById("origName");
+const wmName = document.getElementById("wmName");
+const status = document.getElementById("status");
+
+// Click to open file picker
+origBox.onclick = () => origInput.click();
+wmBox.onclick = () => wmInput.click();
+
+// File selection
+origInput.onchange = () => {
+  originalFile = origInput.files[0];
+  origName.innerText = originalFile ? originalFile.name : "";
+};
+
+wmInput.onchange = () => {
+  watermarkFile = wmInput.files[0];
+  wmName.innerText = watermarkFile ? watermarkFile.name : "";
+};
+
+// Encode
+document.getElementById("encodeBtn").onclick = async () => {
+  if (!originalFile || !watermarkFile) {
+    status.innerText = "❌ Please upload both audio files";
+    return;
+  }
+
+  status.innerText = "⏳ Encoding audio...";
+
+  const fd = new FormData();
+  fd.append("original", originalFile);
+  fd.append("watermark", watermarkFile);
+
+  try {
+    const res = await fetch(`${API}/encode`, {
+      method: "POST",
+      body: fd
+    });
+
+    if (!res.ok) {
+      status.innerText = "❌ Encoding failed";
+      return;
+    }
+
+    const data = await res.json();
+    status.innerText = "⬇ Downloading...";
+
+    // AUTO DOWNLOAD
+    window.location.href = API + data.download_url;
+
+  } catch (e) {
+    status.innerText = "❌ Backend not reachable";
+    console.error(e);
+  }
+};
+</script>
+
 </body>
-
 </html>
-
